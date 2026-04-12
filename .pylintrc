@@ -1,0 +1,10 @@
+[MAIN]
+init-hook='import sys; sys.path.append("./src")'
+
+disable=missing-module-docstring,
+        missing-class-docstring,
+        missing-function-docstring,
+        logging-fstring-interpolation
+
+[FORMAT]
+max-line-length = 120
