@@ -1,0 +1,38 @@
+# Ignore Python cache and environment files
+__pycache__/
+*.pyc
+.env
+.env.*
+.mypy_cache
+.pytest_cache
+
+# Ignore Airflow logs and SQLite DB
+logs/
+airflow.db
+results.db
+
+# Ignore generated sample databases
+samples/*.db
+unittest.cfg
+
+# Ignore credentials and keys
+snowflake_rsa_key.pem
+snowflake_rsa_key.pub
+snowflake_rsa_key.p8
+env.airflow
+src/comparator/config/snowflake_con_private_key.key
+
+# Ignore Docker/VSCode/OS files
+.vscode/
+*.swp
+*.swo
+*.bak
+.DS_Store
+.idea/
+.editorconfig
+.ai-jail
+.claude
+
+build
+venv
+
