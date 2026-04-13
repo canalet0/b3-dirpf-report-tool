@@ -5,9 +5,12 @@ from pathlib import Path
 from contabilidade.models.dirpf import (
     BenDireito,
     DirpfReport,
+    EventoCorporativo,
+    OperacaoRendaVariavel,
     RendaVariavelNota,
     RendimentoIsentoNaoTributavel,
     RendimentoTributacaoExclusiva,
+    ResumoMensalRendaVariavel,
 )
 
 
@@ -154,6 +157,95 @@ def _format_renda_variavel(notas: list[RendaVariavelNota]) -> str:
     return "\n".join(lines)
 
 
+def _brl_opt(value: Decimal | None) -> str:
+    return _brl(value) if value is not None else "-"
+
+
+def _format_operacao_row(op: OperacaoRendaVariavel) -> str:
+    preco = _brl_opt(op.preco_unitario)
+    valor = _brl_opt(op.valor_operacao)
+    custo = _brl_opt(op.custo_medio)
+    ganho = _brl_opt(op.ganho_estimado)
+    if op.preco_unitario is None and op.valor_operacao is None:
+        preco = "- (*)"
+        valor = "- (*)"
+    return (
+        f"| {op.data} | {op.ticker} | {op.tipo} | {op.quantidade} "
+        f"| {preco} | {valor} | {custo} | {ganho} |"
+    )
+
+
+def _format_renda_variavel_operacoes(
+    summaries: list[ResumoMensalRendaVariavel],
+) -> str:
+    if not summaries:
+        return ""
+
+    lines: list[str] = []
+    lines.append("\n### Operações do Ano\n")
+
+    for s in summaries:
+        if s.total_vendas is None:
+            heading = (
+                f"#### {s.mes_label} — ⚠ VERIFICAR — "
+                "preço de venda não disponível para todas as operações"
+            )
+        elif s.isento:
+            heading = (
+                f"#### {s.mes_label} — Total vendas: {_brl(s.total_vendas)}"
+                " — ✓ Isento (≤ R$ 20.000)"
+            )
+        else:
+            heading = (
+                f"#### {s.mes_label} — Total vendas: {_brl(s.total_vendas)}"
+                " — ⚠ Tributável (> R$ 20.000)"
+            )
+        lines.append(heading)
+        lines.append("")
+        lines.append(
+            "| Data | Ativo | Operação | Qtd | Preço Venda | Valor | Custo Médio | Ganho Est. |"
+        )
+        lines.append(
+            "|------|-------|----------|-----|-------------|-------|-------------|------------|"
+        )
+        for op in s.operacoes:
+            lines.append(_format_operacao_row(op))
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def _format_eventos_corporativos(eventos: list[EventoCorporativo]) -> str:
+    if not eventos:
+        return ""
+
+    lines: list[str] = []
+    lines.append("\n### Eventos Corporativos\n")
+    lines.append("| Data | Ativo | Tipo | Quantidade |")
+    lines.append("|------|-------|------|------------|")
+    for ev in eventos:
+        qty = str(ev.quantidade) if ev.quantidade is not None else "-"
+        lines.append(f"| {ev.data} | {ev.ticker} | {ev.tipo} | {qty} |")
+    lines.append("")
+    lines.append(
+        "> Verifique estes eventos no informe de rendimentos da corretora para "
+        "ajustar o custo médio ou registrar eventuais ganhos/rendimentos."
+    )
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _format_income_reconciliation(messages: list[str]) -> str:
+    if not messages:
+        return ""
+    lines: list[str] = []
+    lines.append("\n### Reconciliação com Proventos\n")
+    for msg in messages:
+        lines.append(msg)
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _format_resumo(report: DirpfReport) -> str:
     lines: list[str] = []
     lines.append("| Seção | Total em 31/12 |")
@@ -215,6 +307,9 @@ def format_report(report: DirpfReport, source_path: Path) -> str:
 
     lines.append(_section("RENDA VARIÁVEL"))
     lines.append(_format_renda_variavel(report.renda_variavel_notas))
+    lines.append(_format_renda_variavel_operacoes(report.renda_variavel_operacoes))
+    lines.append(_format_eventos_corporativos(report.eventos_corporativos))
+    lines.append(_format_income_reconciliation(report.income_reconciliation))
 
     lines.append(_section("RESUMO DE VALORES"))
     lines.append(_format_resumo(report))

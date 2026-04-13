@@ -63,3 +63,19 @@ test-e2e:
 	$(VENV_PYTEST) $(E2E_TEST_DIR)/ --cov=$(SRC_DIR) --cov-config .coveragerc-e2e-tests --cov-report term-missing --cov-report html --cov-report xml --cov-report json
 
 all: clean install lint test-unit
+
+run-2024-report:
+	$(VENV_PYTHON) -m contabilidade report 2024 --file private-data/relatorio-consolidado-anual-2024.xlsx --output relatorio-dirpf-2024.md
+
+run-2025-report:
+	$(VENV_PYTHON) -m contabilidade report 2025 --file private-data/relatorio-consolidado-anual-2025.xlsx --output relatorio-dirpf-2025.md
+
+run-2024:
+	$(VENV_PYTHON) -m contabilidade report 2024 \
+		--file private-data/relatorio-consolidado-anual-2024.xlsx \
+		--movimentacao private-data/movimentacao-2024.xlsx
+
+run-2025:
+	$(VENV_PYTHON) -m contabilidade report 2025 \
+		--file private-data/relatorio-consolidado-anual-2025.xlsx \
+		--movimentacao private-data/movimentacao-2025.xlsx

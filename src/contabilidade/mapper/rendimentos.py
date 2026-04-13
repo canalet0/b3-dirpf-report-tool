@@ -1,25 +1,11 @@
 from decimal import Decimal
 
+from contabilidade.mapper._income_categories import classify_provento
 from contabilidade.models.b3 import Provento, Reembolso
 from contabilidade.models.dirpf import (
     RendimentoIsentoNaoTributavel,
     RendimentoTributacaoExclusiva,
 )
-
-_TIPO_DIVIDENDO = "dividendo"
-_TIPO_JCP = "juros sobre capital"
-_TIPO_RENDIMENTO_FII = "rendimento"
-
-
-def _classify_provento(tipo_evento: str) -> str:
-    lower = tipo_evento.lower()
-    if _TIPO_DIVIDENDO in lower:
-        return "dividendo"
-    if _TIPO_JCP in lower:
-        return "jcp"
-    if _TIPO_RENDIMENTO_FII in lower:
-        return "rendimento_fii"
-    return "outros"
 
 
 def map_proventos(
@@ -35,7 +21,7 @@ def map_proventos(
     outros: dict[str, Decimal] = {}
 
     for prov in proventos:
-        kind = _classify_provento(prov.tipo_evento)
+        kind = classify_provento(prov.tipo_evento)
         if kind == "dividendo":
             dividendos[prov.produto] = (
                 dividendos.get(prov.produto, Decimal("0")) + prov.valor_liquido
