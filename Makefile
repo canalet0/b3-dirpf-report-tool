@@ -64,18 +64,18 @@ test-e2e:
 
 all: clean install lint test-unit
 
-run-2024-report:
-	$(VENV_PYTHON) -m contabilidade report 2024 --file private-data/relatorio-consolidado-anual-2024.xlsx --output relatorio-dirpf-2024.md
+report-2024:
+	$(VENV_PYTHON) -m contabilidade report 2024 --output relatorio-dirpf-2024.md
 
-run-2025-report:
-	$(VENV_PYTHON) -m contabilidade report 2025 --file private-data/relatorio-consolidado-anual-2025.xlsx --output relatorio-dirpf-2025.md
+report-2025:
+	$(VENV_PYTHON) -m contabilidade report 2025 --output relatorio-dirpf-2025.md
 
-run-2024:
-	$(VENV_PYTHON) -m contabilidade report 2024 \
+import-2024:
+	$(VENV_PYTHON) -m contabilidade import 2024 \
 		--file private-data/relatorio-consolidado-anual-2024.xlsx \
 		--movimentacao private-data/movimentacao-2024.xlsx
 
-run-2025:
-	$(VENV_PYTHON) -m contabilidade report 2025 \
+import-2025:
+	$(VENV_PYTHON) -m contabilidade import 2025 \
 		--file private-data/relatorio-consolidado-anual-2025.xlsx \
 		--movimentacao private-data/movimentacao-2025.xlsx

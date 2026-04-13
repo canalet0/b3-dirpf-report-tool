@@ -23,6 +23,18 @@ make black-formatter-fix  # auto-fix formatting
 # Run the tool
 python -m contabilidade report 2024 --file samples/relatorio-consolidado-anual-2024.xlsx
 python -m contabilidade report 2024 --file samples/... --output report.md
+
+# Import xlsx into db (run once; enables report without --file)
+python -m contabilidade import 2024 --file private-data/relatorio-consolidado-anual-2024.xlsx
+python -m contabilidade import 2024 --file ... --movimentacao private-data/movimentacao-2024.xlsx
+make import-2024    # shortcut for private-data paths
+
+# Report from db (after import)
+python -m contabilidade report 2024
+python -m contabilidade report 2024 --output report.md
+
+# List imported years
+python -m contabilidade list
 ```
 
 ## Architecture
@@ -43,7 +55,13 @@ src/contabilidade/
   report/
     formatter.py      # DirpfReport → markdown string
     writer.py         # stdout or file
-  cli.py              # argparse: `report YEAR --file PATH [--output PATH]`
+  db/
+    connection.py     # open_connection(), default_db_path() → ~/.contabilidade/data.db
+    schema.py         # ensure_schema(); DDL for 11 tables; schema_version tracking
+    import_log.py     # log_import(), list_imports(), has_b3_report(), has_movimentacao()
+    b3_repository.py  # save_b3_report(), load_b3_report() — all Decimal as TEXT
+    movimentacao_repository.py  # save/load MovimentacaoReport; NULL for Decimal | None
+  cli.py              # argparse: import/report/list subcommands; --db PATH on all; --file optional on report
 ```
 
 ## Key Implementation Details
@@ -68,6 +86,8 @@ src/contabilidade/
 | Reembolsos de Empréstimo | — | — | Exclusiva Linha 10 |
 
 **`valor_anterior`** is always `Decimal("0")` — the xlsx is a year-end snapshot with no prior-year data; the user fills it from their previous DIRPF.
+
+**SQLite persistence:** All `Decimal` fields stored as `TEXT NOT NULL` via `str(value)`; `Decimal | None` as nullable `TEXT`. Re-import atomically deletes old rows and re-inserts within a single `BEGIN/COMMIT` transaction — `import_log` is updated inside the same transaction. `ensure_schema()` is idempotent (uses `CREATE TABLE IF NOT EXISTS`). Default db: `~/.contabilidade/data.db`.
 
 ## Tooling Notes
 

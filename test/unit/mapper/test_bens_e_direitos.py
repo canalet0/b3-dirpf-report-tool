@@ -1,6 +1,11 @@
 from decimal import Decimal
 
 from contabilidade.mapper.bens_e_direitos import (
+    _build_acoes_lookup,
+    _build_etfs_lookup,
+    _build_fundos_lookup,
+    _build_renda_fixa_lookup,
+    _build_tesouro_lookup,
     _format_cnpj,
     _is_fii,
     _renda_fixa_codigo,
@@ -189,3 +194,241 @@ def test_map_tesouro_direto_codigo_04() -> None:
     assert result[0].grupo == "04"
     assert result[0].codigo == "04"
     assert result[0].valor_atual == Decimal("525.0")
+
+
+# --- prior_valores lookup tests ---
+
+
+def test_map_acoes_valor_anterior_filled_from_lookup() -> None:
+    prior = {"61532644000115": Decimal("1100.00")}
+    result = map_acoes([_make_acao()], 2024, prior_valores=prior)
+    assert result[0].valor_anterior == Decimal("1100.00")
+    assert "PREENCHER" not in result[0].discriminacao
+    assert "R$ 1.100,00" in result[0].discriminacao
+
+
+def test_map_acoes_valor_anterior_zero_when_no_match() -> None:
+    prior = {"99999999999999": Decimal("1100.00")}
+    result = map_acoes([_make_acao()], 2024, prior_valores=prior)
+    assert result[0].valor_anterior == Decimal("0")
+    assert "PREENCHER" in result[0].discriminacao
+
+
+def test_map_acoes_valor_anterior_zero_when_no_prior() -> None:
+    result = map_acoes([_make_acao()], 2024, prior_valores=None)
+    assert result[0].valor_anterior == Decimal("0")
+    assert "PREENCHER" in result[0].discriminacao
+
+
+def test_build_acoes_lookup_maps_cnpj_to_value() -> None:
+    lookup = _build_acoes_lookup([_make_acao()])
+    assert lookup["61532644000115"] == Decimal("1270.19")
+
+
+def test_map_etfs_valor_anterior_filled_from_lookup() -> None:
+    etf = EtfPosition(
+        produto="HASH11 - HASHDEX CRIPTO",
+        instituicao="INTER",
+        conta="1234",
+        codigo_negociacao="HASH11",
+        cnpj_fundo="35340541000144",
+        codigo_isin="BRHASHCTF006",
+        tipo="Criptoativo",
+        quantidade=Decimal("10"),
+        preco_fechamento=Decimal("50.0"),
+        valor_atualizado=Decimal("500.0"),
+    )
+    prior = {"35340541000144": Decimal("450.00")}
+    result = map_etfs([etf], 2024, prior_valores=prior)
+    assert result[0].valor_anterior == Decimal("450.00")
+    assert "PREENCHER" not in result[0].discriminacao
+
+
+def test_map_etfs_valor_anterior_zero_when_no_prior() -> None:
+    etf = EtfPosition(
+        produto="HASH11 - HASHDEX CRIPTO",
+        instituicao="INTER",
+        conta="1234",
+        codigo_negociacao="HASH11",
+        cnpj_fundo="35340541000144",
+        codigo_isin="BRHASHCTF006",
+        tipo="Criptoativo",
+        quantidade=Decimal("10"),
+        preco_fechamento=Decimal("50.0"),
+        valor_atualizado=Decimal("500.0"),
+    )
+    result = map_etfs([etf], 2024)
+    assert result[0].valor_anterior == Decimal("0")
+    assert "PREENCHER" in result[0].discriminacao
+
+
+def test_build_etfs_lookup_maps_cnpj_to_value() -> None:
+    etf = EtfPosition(
+        produto="HASH11 - HASHDEX",
+        instituicao="INTER",
+        conta="1234",
+        codigo_negociacao="HASH11",
+        cnpj_fundo="35340541000144",
+        codigo_isin="BRHASHCTF006",
+        tipo="",
+        quantidade=Decimal("10"),
+        preco_fechamento=Decimal("50.0"),
+        valor_atualizado=Decimal("500.0"),
+    )
+    lookup = _build_etfs_lookup([etf])
+    assert lookup["35340541000144"] == Decimal("500.0")
+
+
+def test_map_fundos_valor_anterior_filled_from_lookup() -> None:
+    fundo = FundoPosition(
+        produto="HGRE11 - CSHG REAL ESTATE FII",
+        instituicao="INTER",
+        conta="1234",
+        codigo_negociacao="HGRE11",
+        cnpj_fundo="09072017000129",
+        codigo_isin="BRHGRECTF010",
+        tipo="Cotas",
+        administrador="CREDIT SUISSE",
+        quantidade=Decimal("5"),
+        preco_fechamento=Decimal("120.0"),
+        valor_atualizado=Decimal("600.0"),
+    )
+    prior = {"09072017000129": Decimal("550.00")}
+    result = map_fundos([fundo], 2024, prior_valores=prior)
+    assert result[0].valor_anterior == Decimal("550.00")
+    assert "PREENCHER" not in result[0].discriminacao
+
+
+def test_build_fundos_lookup_maps_cnpj_to_value() -> None:
+    fundo = FundoPosition(
+        produto="HGRE11 - CSHG REAL ESTATE FII",
+        instituicao="INTER",
+        conta="1234",
+        codigo_negociacao="HGRE11",
+        cnpj_fundo="09072017000129",
+        codigo_isin="BRHGRECTF010",
+        tipo="Cotas",
+        administrador="CREDIT SUISSE",
+        quantidade=Decimal("5"),
+        preco_fechamento=Decimal("120.0"),
+        valor_atualizado=Decimal("600.0"),
+    )
+    lookup = _build_fundos_lookup([fundo])
+    assert lookup["09072017000129"] == Decimal("600.0")
+
+
+def test_map_renda_fixa_valor_anterior_filled_from_lookup() -> None:
+    rf = RendaFixaPosition(
+        produto="CDB - BANCO X",
+        instituicao="INTER",
+        emissor="BANCO X",
+        codigo="CDB001",
+        indexador="DI",
+        tipo_regime="Depositado",
+        data_emissao="01/01/2023",
+        vencimento="01/01/2025",
+        quantidade=Decimal("1"),
+        valor_atualizado_curva=Decimal("1000.0"),
+    )
+    prior = {("BANCO X", "CDB001", "01/01/2025"): Decimal("950.00")}
+    result = map_renda_fixa([rf], 2024, prior_valores=prior)
+    assert result[0].valor_anterior == Decimal("950.00")
+    assert "PREENCHER" not in result[0].discriminacao
+
+
+def test_map_renda_fixa_valor_anterior_zero_when_no_prior() -> None:
+    rf = RendaFixaPosition(
+        produto="CDB - BANCO X",
+        instituicao="INTER",
+        emissor="BANCO X",
+        codigo="CDB001",
+        indexador="DI",
+        tipo_regime="Depositado",
+        data_emissao="01/01/2023",
+        vencimento="01/01/2025",
+        quantidade=Decimal("1"),
+        valor_atualizado_curva=Decimal("1000.0"),
+    )
+    result = map_renda_fixa([rf], 2024)
+    assert result[0].valor_anterior == Decimal("0")
+    assert "PREENCHER" in result[0].discriminacao
+
+
+def test_build_renda_fixa_lookup_maps_key_to_value() -> None:
+    rf = RendaFixaPosition(
+        produto="CDB - BANCO X",
+        instituicao="INTER",
+        emissor="BANCO X",
+        codigo="CDB001",
+        indexador="DI",
+        tipo_regime="Depositado",
+        data_emissao="01/01/2023",
+        vencimento="01/01/2025",
+        quantidade=Decimal("1"),
+        valor_atualizado_curva=Decimal("1000.0"),
+    )
+    lookup = _build_renda_fixa_lookup([rf])
+    assert lookup[("BANCO X", "CDB001", "01/01/2025")] == Decimal("1000.0")
+
+
+def test_map_tesouro_valor_anterior_filled_from_lookup() -> None:
+    td = TesouroDiretoPosition(
+        produto="Tesouro IPCA+ 2026",
+        instituicao="INTER",
+        codigo_isin="BRSTNJNTF1R8",
+        indexador="IPCA+",
+        vencimento="15/08/2026",
+        quantidade=Decimal("0.41"),
+        valor_aplicado=Decimal("500.0"),
+        valor_atualizado=Decimal("525.0"),
+    )
+    prior: dict[str, Decimal] = {"BRSTNJNTF1R8": Decimal("490.00")}
+    result = map_tesouro_direto([td], 2024, prior_valores=prior)
+    assert result[0].valor_anterior == Decimal("490.00")
+    assert "PREENCHER" not in result[0].discriminacao
+
+
+def test_map_tesouro_valor_anterior_zero_when_no_prior() -> None:
+    td = TesouroDiretoPosition(
+        produto="Tesouro IPCA+ 2026",
+        instituicao="INTER",
+        codigo_isin="BRSTNJNTF1R8",
+        indexador="IPCA+",
+        vencimento="15/08/2026",
+        quantidade=Decimal("0.41"),
+        valor_aplicado=Decimal("500.0"),
+        valor_atualizado=Decimal("525.0"),
+    )
+    result = map_tesouro_direto([td], 2024)
+    assert result[0].valor_anterior == Decimal("0")
+    assert "PREENCHER" in result[0].discriminacao
+
+
+def test_build_tesouro_lookup_uses_isin_as_key() -> None:
+    td = TesouroDiretoPosition(
+        produto="Tesouro IPCA+ 2026",
+        instituicao="INTER",
+        codigo_isin="BRSTNJNTF1R8",
+        indexador="IPCA+",
+        vencimento="15/08/2026",
+        quantidade=Decimal("0.41"),
+        valor_aplicado=Decimal("500.0"),
+        valor_atualizado=Decimal("525.0"),
+    )
+    lookup = _build_tesouro_lookup([td])
+    assert lookup["BRSTNJNTF1R8"] == Decimal("525.0")
+
+
+def test_build_tesouro_lookup_fallback_when_no_isin() -> None:
+    td = TesouroDiretoPosition(
+        produto="Tesouro IPCA+ 2026",
+        instituicao="INTER",
+        codigo_isin="",
+        indexador="IPCA+",
+        vencimento="15/08/2026",
+        quantidade=Decimal("0.41"),
+        valor_aplicado=Decimal("500.0"),
+        valor_atualizado=Decimal("525.0"),
+    )
+    lookup = _build_tesouro_lookup([td])
+    assert lookup["IPCA+|15/08/2026"] == Decimal("525.0")

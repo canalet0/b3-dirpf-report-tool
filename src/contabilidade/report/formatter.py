@@ -1,6 +1,5 @@
 from datetime import datetime
 from decimal import Decimal
-from pathlib import Path
 
 from contabilidade.models.dirpf import (
     BenDireito,
@@ -68,9 +67,16 @@ def _format_bens_e_direitos(bens: list[BenDireito], year: int) -> str:
             lines.append("**Discriminação:**")
             lines.append(f"> {b.discriminacao}")
             lines.append("")
-            lines.append(
-                f"- Situação em 31/12/{year - 1}: {_brl(b.valor_anterior)}  *(preencher com valor da DIRPF anterior)*"
-            )
+            if b.valor_anterior == Decimal("0"):
+                anterior_line = (
+                    f"- Situação em 31/12/{year - 1}: {_brl(b.valor_anterior)}"
+                    f"  *(preencher com valor da DIRPF anterior)*"
+                )
+            else:
+                anterior_line = (
+                    f"- Situação em 31/12/{year - 1}: {_brl(b.valor_anterior)}"
+                )
+            lines.append(anterior_line)
             lines.append(f"- Situação em 31/12/{year}: **{_brl(b.valor_atual)}**")
             lines.append("")
             total_atual += b.valor_atual
@@ -280,13 +286,13 @@ def _format_resumo(report: DirpfReport) -> str:
     return "\n".join(lines)
 
 
-def format_report(report: DirpfReport, source_path: Path) -> str:
+def format_report(report: DirpfReport, source_label: str) -> str:
     now = datetime.now().strftime("%d/%m/%Y %H:%M")
     lines: list[str] = []
 
     lines.append(f"# Relatório DIRPF {report.year} — gerado por contabilidade")
     lines.append("")
-    lines.append(f"**Arquivo:** `{source_path}`  ")
+    lines.append(f"**Arquivo:** `{source_label}`  ")
     lines.append(f"**Data de geração:** {now}")
     lines.append("")
     lines.append(

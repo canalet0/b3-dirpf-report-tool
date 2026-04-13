@@ -1,5 +1,4 @@
 from decimal import Decimal
-from pathlib import Path
 
 from contabilidade.models.dirpf import (
     BenDireito,
@@ -10,7 +9,7 @@ from contabilidade.models.dirpf import (
 )
 from contabilidade.report.formatter import _brl, format_report
 
-_SAMPLE_PATH = Path("samples/test.xlsx")
+_SAMPLE_LABEL = "samples/test.xlsx"
 
 
 def test_brl_formats_br_locale() -> None:
@@ -64,37 +63,37 @@ def _make_report() -> DirpfReport:
 
 
 def test_format_report_contains_year_header() -> None:
-    content = format_report(_make_report(), _SAMPLE_PATH)
+    content = format_report(_make_report(), _SAMPLE_LABEL)
     assert "2024" in content
 
 
 def test_format_report_contains_bens_e_direitos_section() -> None:
-    content = format_report(_make_report(), _SAMPLE_PATH)
+    content = format_report(_make_report(), _SAMPLE_LABEL)
     assert "BENS E DIREITOS" in content
 
 
 def test_format_report_contains_rendimentos_isentos_section() -> None:
-    content = format_report(_make_report(), _SAMPLE_PATH)
+    content = format_report(_make_report(), _SAMPLE_LABEL)
     assert "RENDIMENTOS ISENTOS" in content
 
 
 def test_format_report_contains_rendimentos_exclusivos_section() -> None:
-    content = format_report(_make_report(), _SAMPLE_PATH)
+    content = format_report(_make_report(), _SAMPLE_LABEL)
     assert "TRIBUTAÇÃO EXCLUSIVA" in content
 
 
 def test_format_report_brl_values_formatted_correctly() -> None:
-    content = format_report(_make_report(), _SAMPLE_PATH)
+    content = format_report(_make_report(), _SAMPLE_LABEL)
     assert "R$ 1.270,19" in content
 
 
 def test_format_report_dividendo_value_appears() -> None:
-    content = format_report(_make_report(), _SAMPLE_PATH)
+    content = format_report(_make_report(), _SAMPLE_LABEL)
     assert "R$ 41,16" in content
 
 
 def test_format_report_contains_resumo() -> None:
-    content = format_report(_make_report(), _SAMPLE_PATH)
+    content = format_report(_make_report(), _SAMPLE_LABEL)
     assert "RESUMO" in content
 
 
@@ -106,5 +105,52 @@ def test_format_report_empty_bens_e_direitos() -> None:
         rendimentos_exclusivos=[],
         renda_variavel_notas=[],
     )
-    content = format_report(report, _SAMPLE_PATH)
+    content = format_report(report, _SAMPLE_LABEL)
     assert "Nenhuma posição encontrada" in content
+
+
+def test_format_bens_anterior_zero_shows_preencher_note() -> None:
+    report = DirpfReport(
+        year=2024,
+        bens_e_direitos=[
+            BenDireito(
+                grupo="03",
+                codigo="01",
+                cnpj="61.532.644/0001-15",
+                discriminacao="ITSA4 Situação em 31/12/2023: R$ 0,00",
+                valor_anterior=Decimal("0"),
+                valor_atual=Decimal("1270.19"),
+            )
+        ],
+        rendimentos_isentos=[],
+        rendimentos_exclusivos=[],
+        renda_variavel_notas=[],
+    )
+    content = format_report(report, _SAMPLE_LABEL)
+    assert "preencher" in content.lower()
+
+
+def test_format_bens_anterior_filled_no_preencher_note() -> None:
+    report = DirpfReport(
+        year=2024,
+        bens_e_direitos=[
+            BenDireito(
+                grupo="03",
+                codigo="01",
+                cnpj="61.532.644/0001-15",
+                discriminacao="ITSA4 Situação em 31/12/2023: R$ 1.100,00",
+                valor_anterior=Decimal("1100.00"),
+                valor_atual=Decimal("1270.19"),
+            )
+        ],
+        rendimentos_isentos=[],
+        rendimentos_exclusivos=[],
+        renda_variavel_notas=[],
+    )
+    content = format_report(report, _SAMPLE_LABEL)
+    assert "R$ 1.100,00" in content
+    # The "preencher" note should NOT appear for the situacao anterior line
+    # (it only appears when valor_anterior == 0)
+    lines = [ln for ln in content.splitlines() if "Situação em 31/12/2023" in ln]
+    assert lines, "Expected a situacao anterior line"
+    assert "preencher" not in lines[0].lower()
