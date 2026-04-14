@@ -43,7 +43,11 @@ from contabilidade.models.dirpf import (
 from contabilidade.models.movimentacao import MovimentacaoReport
 from contabilidade.parser.movimentacao_parser import parse_movimentacao_report
 from contabilidade.parser.sheet_parser import parse_b3_report
+from contabilidade.analyzer.analytics import build_analytics_report
+from contabilidade.analyzer.growth import build_growth_report
+from contabilidade.report.analytics_formatter import format_analytics_report
 from contabilidade.report.formatter import format_report
+from contabilidade.report.growth_formatter import format_growth_report
 from contabilidade.report.writer import write_report
 
 
@@ -257,6 +261,52 @@ def _handle_report(  # pylint: disable=too-many-branches,too-many-locals
     write_report(content, args.output)
 
 
+def _handle_growth(args: argparse.Namespace) -> None:
+    db_path: Path = args.db if args.db is not None else default_db_path()
+    conn = open_connection(db_path)
+    ensure_schema(conn)
+
+    entries = list_imports(conn)
+    b3_years = sorted({e.year for e in entries if e.source_type == "b3_report"})
+
+    if not b3_years:
+        print(
+            "Erro: nenhum dado importado. Use 'import YEAR --file PATH' para importar.",
+            file=sys.stderr,
+        )
+        conn.close()
+        sys.exit(1)
+
+    report = build_growth_report(conn, b3_years)
+    conn.close()
+
+    content = format_growth_report(report, str(db_path))
+    write_report(content, args.output)
+
+
+def _handle_analytics(args: argparse.Namespace) -> None:
+    db_path: Path = args.db if args.db is not None else default_db_path()
+    conn = open_connection(db_path)
+    ensure_schema(conn)
+
+    entries = list_imports(conn)
+    b3_years = sorted({e.year for e in entries if e.source_type == "b3_report"})
+
+    if not b3_years:
+        print(
+            "Erro: nenhum dado importado. Use 'import YEAR --file PATH' para importar.",
+            file=sys.stderr,
+        )
+        conn.close()
+        sys.exit(1)
+
+    report = build_analytics_report(conn, b3_years)
+    conn.close()
+
+    content = format_analytics_report(report, str(db_path))
+    write_report(content, args.output)
+
+
 def _handle_list(args: argparse.Namespace) -> None:
     db_path: Path = args.db if args.db is not None else default_db_path()
     conn = open_connection(db_path)
@@ -347,6 +397,36 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     _add_db_arg(import_parser)
 
+    # --- growth ---
+    growth_parser = subparsers.add_parser(
+        "growth",
+        help="Gera relatório de crescimento da carteira ao longo dos anos importados.",
+    )
+    growth_parser.add_argument(
+        "--output",
+        "-o",
+        type=Path,
+        metavar="PATH",
+        default=None,
+        help="Caminho para salvar o relatório (padrão: stdout).",
+    )
+    _add_db_arg(growth_parser)
+
+    # --- analytics ---
+    analytics_parser = subparsers.add_parser(
+        "analytics",
+        help="Gera relatório de analytics da carteira (desempenho, yield, custo médio).",
+    )
+    analytics_parser.add_argument(
+        "--output",
+        "-o",
+        type=Path,
+        metavar="PATH",
+        default=None,
+        help="Caminho para salvar o relatório (padrão: stdout).",
+    )
+    _add_db_arg(analytics_parser)
+
     # --- list ---
     list_parser = subparsers.add_parser(
         "list",
@@ -364,5 +444,9 @@ def main(argv: list[str] | None = None) -> None:
         _handle_import(args)
     elif args.command == "report":
         _handle_report(args)
+    elif args.command == "growth":
+        _handle_growth(args)
+    elif args.command == "analytics":
+        _handle_analytics(args)
     elif args.command == "list":
         _handle_list(args)

@@ -70,6 +70,26 @@ report-2024:
 report-2025:
 	$(VENV_PYTHON) -m contabilidade report 2025 --output relatorio-dirpf-2025.md
 
+import-2020:
+	$(VENV_PYTHON) -m contabilidade import 2020 \
+		--file private-data/relatorio-consolidado-anual-2020.xlsx \
+		--movimentacao private-data/movimentacao-2020.xlsx
+
+import-2021:
+	$(VENV_PYTHON) -m contabilidade import 2021 \
+		--file private-data/relatorio-consolidado-anual-2021.xlsx \
+		--movimentacao private-data/movimentacao-2021.xlsx
+
+import-2022:
+	$(VENV_PYTHON) -m contabilidade import 2022 \
+		--file private-data/relatorio-consolidado-anual-2022.xlsx \
+		--movimentacao private-data/movimentacao-2022.xlsx
+
+import-2023:
+	$(VENV_PYTHON) -m contabilidade import 2023 \
+		--file private-data/relatorio-consolidado-anual-2023.xlsx \
+		--movimentacao private-data/movimentacao-2023.xlsx
+
 import-2024:
 	$(VENV_PYTHON) -m contabilidade import 2024 \
 		--file private-data/relatorio-consolidado-anual-2024.xlsx \
@@ -79,3 +99,9 @@ import-2025:
 	$(VENV_PYTHON) -m contabilidade import 2025 \
 		--file private-data/relatorio-consolidado-anual-2025.xlsx \
 		--movimentacao private-data/movimentacao-2025.xlsx
+
+growth: report-2024 report-2025
+	$(VENV_PYTHON) -m contabilidade growth
+
+analytics:
+	$(VENV_PYTHON) -m contabilidade analytics
